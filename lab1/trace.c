@@ -91,6 +91,28 @@ void process_ip_hdr(const unsigned char* packet){
 
 void process_arp_hdr(const unsigned char* packet){
     printf("\tARP Header\n");
+    printf("\t\tOpcode: ");
+    packet = packet + (2*SHORT_BYTES) + 2;
+    uint16_t opcode = get_short(&packet, 1);
+    switch(opcode){
+        case 1:
+            printf("Request\n");
+            break;
+        case 2:
+            printf("Reply\n");
+            break;
+        default:
+            printf("%i\n", opcode);
+            break;
+    }
+    printf("\t\tSender MAC: ");
+    print_mac(&packet);
+    printf("\t\tSender IP: ");
+    print_ip(&packet);
+    printf("\t\tTarget MAC: ");
+    print_mac(&packet);
+    printf("\t\tTarget IP: ");
+    print_ip(&packet);
     printf("\n");
     return;
 }
@@ -145,5 +167,7 @@ int main(int argc, char* argv[]){
         process_eth_hdr(packet);
         i++;
     }
+
+    pcap_close(file);
 
 }
