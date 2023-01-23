@@ -2,44 +2,119 @@
 #include <pcap.h>
 #include "checksum.h"
 #include "utility.h"
-#include <arpa/inet.h>
 #include <sys/types.h>
 #include <string.h>
 
-#define MAC_SIZE 6
-
-void process_eth_hdr(const unsigned char* packet){
-    printf("\tEthernet Header\n");
-    printf("\t\tDest MAC: ");
-    int i = 0;
-    for(; i < (MAC_SIZE-1); i++){
-        printf("%x:", packet[i]);
-    }
-    printf("%x\n", packet[i++]);
-    printf("\t\tSource MAC: ");
-    for(; i<(2*MAC_SIZE-1); i++){
-        printf("%x:", packet[i]);
-    }
-    printf("%x\n", packet[i++]);
+void process_icmp_hdr(const unsigned char* packet, const unsigned char* p_hdr){
+    printf("\tICMP Header\n");
     printf("\t\tType: ");
-    uint16_t type;
-    memcpy(&type, packet+(2*MAC_SIZE), 2);
-    type = ntohs(type);
-    if(type == 0x0800){
-        printf("IP\n");
-    }else if(type == 0x0806){
-        printf("ARP\n");   
+    if(packet++[0] == 8){
+        printf("Request\n");
     }else{
-        printf("Unknown\n");
+        printf("Reply\n");
     }
     printf("\n");
     return;
 }
 
+void process_udp_hdr(const unsigned char* packet,const unsigned char* p_hdr){
+
+}
+
+void process_tcp_hdr(const unsigned char* packet,const unsigned char* p_hdr){
+
+}
+
 void process_ip_hdr(const unsigned char* packet){
+    const unsigned char* ip_begin = packet;
     printf("\tIP Header\n");
 
+    uint16_t hdr_len = (packet++[0]&0xf)*4;
+
+    printf("\t\tHeader Len: %i (bytes)\n", hdr_len);
+    printf("\t\tTOS: 0x%x\n", packet++[0]);
+
+    uint16_t pdu_len = get_short(&packet, 1);
+    packet = packet+LONG_BYTES;
+
+    printf("\t\tTTL: %i\n", packet++[0]);
+    printf("\t\tIP PDU Len: %i\n", pdu_len);
+    printf("\t\tProtocol: ");
+
+    char protocol = packet++[0];
+    switch(protocol){
+        case 1:
+            printf("ICMP\n");
+            break;
+        case 6:
+            printf("TCP\n");
+            break;
+        case 17:
+            printf("UDP\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+    }
+
+    printf("\t\tChecksum: ");
+    if(in_cksum((unsigned short*)ip_begin, pdu_len+hdr_len)==0){
+        printf("Correct ");
+    }else{
+        printf("Incorrect ");
+    }
+    printf("(0x%x)\n", get_short(&packet, 0));
+    printf("\t\tSender IP: ");
+    print_ip(&packet);
+    printf("\t\tDest IP: ");
+    print_ip(&packet);
     printf("\n");
+
+    switch(protocol){
+        case 1:
+            process_icmp_hdr(packet, ip_begin);
+            break;
+        case 6:
+            process_tcp_hdr(packet, ip_begin);
+            break;
+        case 17:
+            process_udp_hdr(packet, ip_begin);
+            break;
+        default:
+            break;
+    }
+    return;
+}
+
+void process_arp_hdr(const unsigned char* packet){
+    printf("\tARP Header\n");
+    printf("\n");
+    return;
+}
+
+void process_eth_hdr(const unsigned char* packet){
+    printf("\tEthernet Header\n");
+    printf("\t\tDest MAC: ");
+
+    print_mac(&packet);
+
+    printf("\t\tSource MAC: ");
+    
+    print_mac(&packet);
+
+    printf("\t\tType: ");
+
+    uint16_t type = get_short(&packet, 1);
+
+    if(type == 0x0800){
+        printf("IP\n\n");
+        process_ip_hdr(packet);
+    }else if(type == 0x0806){
+        printf("ARP\n\n");
+        process_arp_hdr(packet);   
+    }else{
+        printf("Unknown\n");
+    }
     return;
 }
 
@@ -65,7 +140,6 @@ int main(int argc, char* argv[]){
     while(pcap_next_ex(file, &pkthdr, &packet) > 0){
         printf("Packet number: %i  Frame Len: %i\n\n", i, pkthdr->len);
         process_eth_hdr(packet);
-        process_ip_hdr(packet);
         i++;
     }
 
