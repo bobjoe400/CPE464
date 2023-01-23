@@ -3,7 +3,7 @@
 # 
 
 CC = gcc
-CFLAGS = -Wall -std=c99 -pedantic -g
+CFLAGS = -Wall -std=c99 -pedantic -g -D_GNU_SOURCE
 MAIN = trace
 OBJS = trace.o utility.o checksum.o
 
