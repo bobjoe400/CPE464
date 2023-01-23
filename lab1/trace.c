@@ -8,10 +8,13 @@
 void process_icmp_hdr(const unsigned char* packet, const unsigned char* p_hdr){
     printf("\tICMP Header\n");
     printf("\t\tType: ");
-    if(packet++[0] == 8){
+    char type = packet++[0];
+    if(type == 8){
         printf("Request\n");
-    }else{
+    }else if(type == 0){
         printf("Reply\n");
+    }else{
+        printf("%i\n", type);
     }
     printf("\n");
     return;
@@ -38,7 +41,7 @@ void process_ip_hdr(const unsigned char* packet){
     packet = packet+LONG_BYTES;
 
     printf("\t\tTTL: %i\n", packet++[0]);
-    printf("\t\tIP PDU Len: %i\n", pdu_len);
+    printf("\t\tIP PDU Len: %i (bytes)\n", pdu_len);
     printf("\t\tProtocol: ");
 
     char protocol = packet++[0];
@@ -72,13 +75,13 @@ void process_ip_hdr(const unsigned char* packet){
 
     switch(protocol){
         case 1:
-            process_icmp_hdr(packet, ip_begin);
+            process_icmp_hdr(ip_begin+hdr_len, ip_begin);
             break;
         case 6:
-            process_tcp_hdr(packet, ip_begin);
+            process_tcp_hdr(ip_begin+hdr_len, ip_begin);
             break;
         case 17:
-            process_udp_hdr(packet, ip_begin);
+            process_udp_hdr(ip_begin+hdr_len, ip_begin);
             break;
         default:
             break;
