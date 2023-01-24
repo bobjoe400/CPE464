@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <string.h>
 
-void process_icmp_hdr(const unsigned char* packet, const unsigned char* p_hdr){
+void process_icmp_hdr(const unsigned char* packet, const unsigned char* ip_st){
     printf("\tICMP Header\n");
     printf("\t\tType: ");
     char type = packet++[0];
@@ -20,12 +20,52 @@ void process_icmp_hdr(const unsigned char* packet, const unsigned char* p_hdr){
     return;
 }
 
-void process_udp_hdr(const unsigned char* packet,const unsigned char* p_hdr){
-
+void process_udp_hdr(const unsigned char* packet,const unsigned char* ip_st){
+    
 }
 
-void process_tcp_hdr(const unsigned char* packet,const unsigned char* p_hdr){
-
+void process_tcp_hdr(const unsigned char* packet,const unsigned char* ip_st, uint16_t tcp_pdu_len, char ip_ptcl){
+    unsigned char* tcp_begin = packet;
+    printf("\tTCP Header\n");
+    printf("\t\tSource Port: :");
+    print_tcp_udp_port(&packet);
+    printf("\t\tDest Port: : ");
+    print_tcp_udp_port(&packet);
+    printf("\t\tSequence Number: %u\n", get_long(&packet,1));
+    printf("\t\tACK Number: ");
+    uint32_t ack_n = get_long(&packet,0);
+    packet++;
+    char ack_f = packet[0] & 0x10;
+    if(ack_f){
+        printf("%u\n", ack_n);
+    }else{
+        printf("<not valid>\n");
+    }
+    char rst_f = packet[0] & 0x4;
+    char syn_f = packet[0] & 0x2;
+    char fin_f = packet[0] & 0x1;
+    printf("\t\tACK Flag: %s\n", (ack_f)? "Yes" : "No");
+    printf("\t\tSYN Flag: %s\n", (syn_f)? "Yes" : "No");
+    printf("\t\tRST Flag: %s\n", (rst_f)? "Yes" : "No");
+    printf("\t\tFIN Flag: %s\n", (fin_f)? "Yes" : "No");
+    packet++;
+    printf("\t\tWindow Size: %i\n", get_short(&packet, 1));
+    uint8_t p_hdr[12] = {0};
+    tcp_pdu_len = htons(tcp_pdu_len);
+    memcpy(p_hdr, ip_st, 2*IP_ADDR_SIZE);
+    memcpy(p_hdr+2*IP_ADDR_SIZE+1, &ip_ptcl, 1);
+    memcpy(p_hdr+2*IP_ADDR_SIZE+2, &tcp_pdu_len, 2);
+    tcp_pdu_len = ntohs(tcp_pdu_len);
+    uint8_t tcp_chksm[12+tcp_pdu_len];
+    memcpy(tcp_chksm, p_hdr, 12);
+    memcpy(tcp_chksm+12, tcp_begin, tcp_pdu_len);
+    printf("\t\tChecksum: ");
+    if(in_cksum((unsigned short*)tcp_chksm, 12+tcp_pdu_len) == 0){
+        printf("Correct ");
+    }else{
+        printf("Incorrect ");
+    }
+    printf("(0x%x)\n", get_short(&packet, 0));
 }
 
 void process_ip_hdr(const unsigned char* packet){
@@ -61,12 +101,13 @@ void process_ip_hdr(const unsigned char* packet){
     }
 
     printf("\t\tChecksum: ");
-    if(in_cksum((unsigned short*)ip_begin, pdu_len+hdr_len)==0){
+    if(in_cksum((unsigned short*)ip_begin, hdr_len)==0){
         printf("Correct ");
     }else{
         printf("Incorrect ");
     }
     printf("(0x%x)\n", get_short(&packet, 0));
+    ip_begin = packet;
     printf("\t\tSender IP: ");
     print_ip(&packet);
     printf("\t\tDest IP: ");
@@ -75,13 +116,13 @@ void process_ip_hdr(const unsigned char* packet){
 
     switch(protocol){
         case 1:
-            process_icmp_hdr(ip_begin+hdr_len, ip_begin);
+            process_icmp_hdr(packet, ip_begin);
             break;
         case 6:
-            process_tcp_hdr(ip_begin+hdr_len, ip_begin);
+            process_tcp_hdr(packet, ip_begin, pdu_len - hdr_len, protocol);
             break;
         case 17:
-            process_udp_hdr(ip_begin+hdr_len, ip_begin);
+            process_udp_hdr(packet, ip_begin);
             break;
         default:
             break;
@@ -165,6 +206,7 @@ int main(int argc, char* argv[]){
     while(pcap_next_ex(file, &pkthdr, &packet) > 0){
         printf("Packet number: %i  Frame Len: %i\n\n", i, pkthdr->len);
         process_eth_hdr(packet);
+        printf("\n");
         i++;
     }
 

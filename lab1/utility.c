@@ -29,6 +29,12 @@ uint32_t get_long(const unsigned char** packet, char conv){
     uint32_t t_long;
     memcpy(&t_long, *packet, LONG_BYTES);
     *packet = *packet+LONG_BYTES;
-    if(conv) return ntohs(t_long);
+    if(conv) return ntohl(t_long);
     return t_long;
+}
+
+void print_tcp_udp_port(const unsigned char** packet){
+    *packet = *packet + SHORT_BYTES;
+    printf("\n");
+    return;
 }

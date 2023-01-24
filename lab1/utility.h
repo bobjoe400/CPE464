@@ -13,4 +13,6 @@ void print_mac(const unsigned char**);
 void print_ip(const unsigned char**);
 uint16_t get_short(const unsigned char**, char);
 uint32_t get_long(const unsigned char**, char);
+void print_tcp_udp_port(const unsigned char**);
+
 #endif

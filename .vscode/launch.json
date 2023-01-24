@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/lab1/trace",
-            "args": ["PingTest.pcap"],
+            "args": ["smallTCP.pcap"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
