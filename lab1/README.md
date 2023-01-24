@@ -4,3 +4,5 @@ Using this allows for simplified byte grabbing by just either memcpy'ing the byt
 at or just de-referencing the pointer to get the byte. This also allowed me to use postcrement
 to access the value then increment the pointer in the line where I'm accessing it. I use this 
 throughout the program. 
+
+The utility file contains short functions that do not belong in the main program. 
