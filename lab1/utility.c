@@ -34,7 +34,27 @@ uint32_t get_long(const unsigned char** packet, char conv){
 }
 
 void print_tcp_udp_port(const unsigned char** packet){
-    *packet = *packet + SHORT_BYTES;
+    uint16_t port = get_short(packet, 1);
+    switch(port){
+        case 21: //ftp
+            printf("FTP");
+            break;
+        case 23: //telnet
+            printf("Telnet");
+            break;
+        case 25: //smtp
+            printf("SMTP");
+            break;
+        case 80: //http
+            printf("HTTP");
+            break;
+        case 110: //pop3
+            printf("POP3");
+            break;
+        default:
+            printf(": %i", port);
+            break;
+    }
     printf("\n");
     return;
 }

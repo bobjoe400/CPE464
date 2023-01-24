@@ -16,24 +16,27 @@ void process_icmp_hdr(const unsigned char* packet, const unsigned char* ip_st){
     }else{
         printf("%i\n", type);
     }
-    printf("\n");
-    return;
 }
 
 void process_udp_hdr(const unsigned char* packet,const unsigned char* ip_st){
-    
+    printf("\tUDP Header\n");
+    printf("\t\tSource Port: ");
+    print_tcp_udp_port(&packet);
+    printf("\t\tDest Port: ");
+    print_tcp_udp_port(&packet);
+    printf("\n");
 }
 
 void process_tcp_hdr(const unsigned char* packet,const unsigned char* ip_st, uint16_t tcp_pdu_len, char ip_ptcl){
-    unsigned char* tcp_begin = packet;
+    const unsigned char* tcp_begin = packet;
     printf("\tTCP Header\n");
-    printf("\t\tSource Port: :");
+    printf("\t\tSource Port: ");
     print_tcp_udp_port(&packet);
-    printf("\t\tDest Port: : ");
+    printf("\t\tDest Port: ");
     print_tcp_udp_port(&packet);
     printf("\t\tSequence Number: %u\n", get_long(&packet,1));
     printf("\t\tACK Number: ");
-    uint32_t ack_n = get_long(&packet,0);
+    uint32_t ack_n = get_long(&packet,1);
     packet++;
     char ack_f = packet[0] & 0x10;
     if(ack_f){
@@ -65,7 +68,7 @@ void process_tcp_hdr(const unsigned char* packet,const unsigned char* ip_st, uin
     }else{
         printf("Incorrect ");
     }
-    printf("(0x%x)\n", get_short(&packet, 0));
+    printf("(0x%x)\n", get_short(&packet, 1));
 }
 
 void process_ip_hdr(const unsigned char* packet){
@@ -107,7 +110,7 @@ void process_ip_hdr(const unsigned char* packet){
         printf("Incorrect ");
     }
     printf("(0x%x)\n", get_short(&packet, 0));
-    ip_begin = packet;
+    const unsigned char* tcp_begin = packet;
     printf("\t\tSender IP: ");
     print_ip(&packet);
     printf("\t\tDest IP: ");
@@ -116,22 +119,21 @@ void process_ip_hdr(const unsigned char* packet){
 
     switch(protocol){
         case 1:
-            process_icmp_hdr(packet, ip_begin);
+            process_icmp_hdr(ip_begin+hdr_len, ip_begin);
             break;
         case 6:
-            process_tcp_hdr(packet, ip_begin, pdu_len - hdr_len, protocol);
+            process_tcp_hdr(ip_begin+hdr_len, tcp_begin, pdu_len - hdr_len, protocol);
             break;
         case 17:
-            process_udp_hdr(packet, ip_begin);
+            process_udp_hdr(ip_begin+hdr_len, ip_begin);
             break;
         default:
             break;
     }
-    return;
 }
 
 void process_arp_hdr(const unsigned char* packet){
-    printf("\tARP Header\n");
+    printf("\tARP header\n");
     printf("\t\tOpcode: ");
     packet = packet + (2*SHORT_BYTES) + 2;
     uint16_t opcode = get_short(&packet, 1);
@@ -155,7 +157,6 @@ void process_arp_hdr(const unsigned char* packet){
     printf("\t\tTarget IP: ");
     print_ip(&packet);
     printf("\n");
-    return;
 }
 
 void process_eth_hdr(const unsigned char* packet){
@@ -203,6 +204,7 @@ int main(int argc, char* argv[]){
     const unsigned char* packet;
     int i = 1;
 
+    printf("\n");
     while(pcap_next_ex(file, &pkthdr, &packet) > 0){
         printf("Packet number: %i  Frame Len: %i\n\n", i, pkthdr->len);
         process_eth_hdr(packet);
@@ -211,5 +213,5 @@ int main(int argc, char* argv[]){
     }
 
     pcap_close(file);
-
+    return 0;
 }

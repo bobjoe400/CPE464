@@ -1,4 +1,5 @@
 *.code-workspace
 vscode
 trace
+*_diff.txt
 *.o

@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/lab1/trace",
-            "args": ["smallTCP.pcap"],
+            "args": ["IP_bad_checksum.pcap"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
