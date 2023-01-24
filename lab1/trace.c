@@ -42,8 +42,7 @@ Methodology:
     - using our ideology of just advancing a pointer to get the bytes we need
     - passing the packet pointer into our get_short and get_long utility 
         functions to get, well, the shorts and longs we need
-    - abusing the fact that anything greater than 0 is considered true by if statements
-    - 
+    - use pointer arithmatic to build the psuedoheader and checksum
 */
 void process_tcp_hdr(const unsigned char* packet,const unsigned char* tcp_st, uint16_t tcp_pdu_len, char ip_ptcl){
     const unsigned char* tcp_begin = packet; //save this position for later to use in the checksum
@@ -89,7 +88,7 @@ void process_tcp_hdr(const unsigned char* packet,const unsigned char* tcp_st, ui
     memcpy(p_hdr+2*IP_ADDR_SIZE+1, &ip_ptcl, 1);
     memcpy(p_hdr+2*IP_ADDR_SIZE+2, &tcp_pdu_len, 2);
     tcp_pdu_len = ntohs(tcp_pdu_len);
-
+`
     //build the checksum (psuedoheader is known length)
     uint8_t tcp_chksm[TCP_P_HDR_LEN+tcp_pdu_len];
     memcpy(tcp_chksm, p_hdr, TCP_P_HDR_LEN);
@@ -105,11 +104,13 @@ void process_tcp_hdr(const unsigned char* packet,const unsigned char* tcp_st, ui
     printf("(0x%x)\n", get_short(&packet, 1));
 }
 
+//as with TCP header we will use the same methodology to parse the IP header
+//this time using our print_ip() function to easily print the ip
 void process_ip_hdr(const unsigned char* packet){
     const unsigned char* ip_begin = packet;
     printf("\tIP Header\n");
 
-    uint16_t hdr_len = (packet++[0]&0xf)*4;
+    uint16_t hdr_len = (packet++[0]&0xf)*4;//grab only the lower bit for the hdr_len
 
     printf("\t\tHeader Len: %i (bytes)\n", hdr_len);
     printf("\t\tTOS: 0x%x\n", packet++[0]);
@@ -168,13 +169,14 @@ void process_ip_hdr(const unsigned char* packet){
     }
 }
 
+//arp header processing is pretty mundane compared to the other ones
 void process_arp_hdr(const unsigned char* packet){
     printf("\tARP header\n");
 
     printf("\t\tOpcode: ");
 
     packet = packet + (2*SHORT_BYTES) + 2;  //skip over these bytes i've separated them like this because this is
-                                            //is how the data is grouped in the packet
+                                            //how the data is grouped in the packet
 
     uint16_t opcode = get_short(&packet, 1);
     switch(opcode){
@@ -189,6 +191,8 @@ void process_arp_hdr(const unsigned char* packet){
             break;
     }
 
+
+    //all together now mac and ip!
     printf("\t\tSender MAC: ");
     print_mac(&packet);
 
@@ -230,6 +234,7 @@ void process_eth_hdr(const unsigned char* packet){
 }
 
 int main(int argc, char* argv[]){
+    //verify an argument was given
     if(argc != 2){
         fprintf(stderr, "Usage trace <File Name>\n");
         return -1;
@@ -239,11 +244,13 @@ int main(int argc, char* argv[]){
     pcap_t* file;
     char p_o_errbuf[256];
     
+    //verfiy the pcap file exists
     if((file = pcap_open_offline(fileName, p_o_errbuf)) == NULL){
         fprintf(stderr, "%s", p_o_errbuf);
         return -1;
     }
 
+    //begin going through the packet
     struct pcap_pkthdr* pkthdr;
     const unsigned char* packet;
     int i = 1;

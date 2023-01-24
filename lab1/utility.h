@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 
+//useful numbers to avoid using "magic numbers"
 #define MAC_ADDR_SIZE 6
 #define IP_ADDR_SIZE 4
 #define SHORT_BYTES 2
