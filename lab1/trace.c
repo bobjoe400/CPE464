@@ -88,7 +88,7 @@ void process_tcp_hdr(const unsigned char* packet,const unsigned char* tcp_st, ui
     memcpy(p_hdr+2*IP_ADDR_SIZE+1, &ip_ptcl, 1);
     memcpy(p_hdr+2*IP_ADDR_SIZE+2, &tcp_pdu_len, 2);
     tcp_pdu_len = ntohs(tcp_pdu_len);
-`
+
     //build the checksum (psuedoheader is known length)
     uint8_t tcp_chksm[TCP_P_HDR_LEN+tcp_pdu_len];
     memcpy(tcp_chksm, p_hdr, TCP_P_HDR_LEN);
