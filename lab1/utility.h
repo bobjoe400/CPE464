@@ -8,6 +8,7 @@
 #define IP_ADDR_SIZE 4
 #define SHORT_BYTES 2
 #define LONG_BYTES 4
+#define TCP_P_HDR_LEN 12
 
 void print_mac(const unsigned char**);
 void print_ip(const unsigned char**);

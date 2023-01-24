@@ -5,8 +5,10 @@
 #include <sys/types.h>
 #include <string.h>
 
-void process_icmp_hdr(const unsigned char* packet, const unsigned char* ip_st){
+//just pass in the current packet pointer and check the type
+void process_icmp_hdr(const unsigned char* packet){
     printf("\tICMP Header\n");
+
     printf("\t\tType: ");
     char type = packet++[0];
     if(type == 8){
@@ -18,52 +20,84 @@ void process_icmp_hdr(const unsigned char* packet, const unsigned char* ip_st){
     }
 }
 
-void process_udp_hdr(const unsigned char* packet,const unsigned char* ip_st){
+//just pass in the current packet pointer and get the two ports
+void process_udp_hdr(const unsigned char* packet){
     printf("\tUDP Header\n");
+
     printf("\t\tSource Port: ");
     print_tcp_udp_port(&packet);
+
     printf("\t\tDest Port: ");
     print_tcp_udp_port(&packet);
     printf("\n");
 }
 
-void process_tcp_hdr(const unsigned char* packet,const unsigned char* ip_st, uint16_t tcp_pdu_len, char ip_ptcl){
-    const unsigned char* tcp_begin = packet;
+/*
+Function: process_tcp_hdr
+Input: current packet pointer, beginning of IP addresses for tcp psuedoheader, calculated tcp pdu lenght, 
+            IP protocol for psuedoheader
+Output: none
+
+Methodology:
+    - using our ideology of just advancing a pointer to get the bytes we need
+    - passing the packet pointer into our get_short and get_long utility 
+        functions to get, well, the shorts and longs we need
+    - abusing the fact that anything greater than 0 is considered true by if statements
+    - 
+*/
+void process_tcp_hdr(const unsigned char* packet,const unsigned char* tcp_st, uint16_t tcp_pdu_len, char ip_ptcl){
+    const unsigned char* tcp_begin = packet; //save this position for later to use in the checksum
+
+    //get those ports!
     printf("\tTCP Header\n");
     printf("\t\tSource Port: ");
     print_tcp_udp_port(&packet);
     printf("\t\tDest Port: ");
     print_tcp_udp_port(&packet);
+
     printf("\t\tSequence Number: %u\n", get_long(&packet,1));
+
     printf("\t\tACK Number: ");
-    uint32_t ack_n = get_long(&packet,1);
+    uint32_t ack_n = get_long(&packet,1); //store it for later to see if we need to print it
     packet++;
+
+    //for the flags we just needs to mask off the bits we need
     char ack_f = packet[0] & 0x10;
+    
     if(ack_f){
         printf("%u\n", ack_n);
     }else{
         printf("<not valid>\n");
     }
+
     char rst_f = packet[0] & 0x4;
     char syn_f = packet[0] & 0x2;
     char fin_f = packet[0] & 0x1;
-    printf("\t\tACK Flag: %s\n", (ack_f)? "Yes" : "No");
+
+    printf("\t\tACK Flag: %s\n", (ack_f)? "Yes" : "No"); //anything greather than 0 is true :)
     printf("\t\tSYN Flag: %s\n", (syn_f)? "Yes" : "No");
     printf("\t\tRST Flag: %s\n", (rst_f)? "Yes" : "No");
     printf("\t\tFIN Flag: %s\n", (fin_f)? "Yes" : "No");
     packet++;
+
     printf("\t\tWindow Size: %i\n", get_short(&packet, 1));
-    uint8_t p_hdr[12] = {0};
+
+    //time to build the psuedoheader (follow the diagram)
+    uint8_t p_hdr[TCP_P_HDR_LEN] = {0};
     tcp_pdu_len = htons(tcp_pdu_len);
-    memcpy(p_hdr, ip_st, 2*IP_ADDR_SIZE);
+    memcpy(p_hdr, tcp_st, 2*IP_ADDR_SIZE);
     memcpy(p_hdr+2*IP_ADDR_SIZE+1, &ip_ptcl, 1);
     memcpy(p_hdr+2*IP_ADDR_SIZE+2, &tcp_pdu_len, 2);
     tcp_pdu_len = ntohs(tcp_pdu_len);
-    uint8_t tcp_chksm[12+tcp_pdu_len];
-    memcpy(tcp_chksm, p_hdr, 12);
-    memcpy(tcp_chksm+12, tcp_begin, tcp_pdu_len);
+
+    //build the checksum (psuedoheader is known length)
+    uint8_t tcp_chksm[TCP_P_HDR_LEN+tcp_pdu_len];
+    memcpy(tcp_chksm, p_hdr, TCP_P_HDR_LEN);
+    memcpy(tcp_chksm+TCP_P_HDR_LEN, tcp_begin, tcp_pdu_len);
+
+    //check to see if we messed up our checksum
     printf("\t\tChecksum: ");
-    if(in_cksum((unsigned short*)tcp_chksm, 12+tcp_pdu_len) == 0){
+    if(in_cksum((unsigned short*)tcp_chksm, TCP_P_HDR_LEN+tcp_pdu_len) == 0){
         printf("Correct ");
     }else{
         printf("Incorrect ");
@@ -109,8 +143,10 @@ void process_ip_hdr(const unsigned char* packet){
     }else{
         printf("Incorrect ");
     }
-    printf("(0x%x)\n", get_short(&packet, 0));
-    const unsigned char* tcp_begin = packet;
+    printf("(0x%x)\n", get_short(&packet, 0)); // this checksum doesn't need to be converted from net to host :)
+
+    const unsigned char* tcp_begin = packet; //save our spot in the packet for use in the TCP psuedoheader
+
     printf("\t\tSender IP: ");
     print_ip(&packet);
     printf("\t\tDest IP: ");
@@ -119,13 +155,13 @@ void process_ip_hdr(const unsigned char* packet){
 
     switch(protocol){
         case 1:
-            process_icmp_hdr(ip_begin+hdr_len, ip_begin);
+            process_icmp_hdr(ip_begin+hdr_len);
             break;
         case 6:
             process_tcp_hdr(ip_begin+hdr_len, tcp_begin, pdu_len - hdr_len, protocol);
             break;
         case 17:
-            process_udp_hdr(ip_begin+hdr_len, ip_begin);
+            process_udp_hdr(ip_begin+hdr_len);
             break;
         default:
             break;
@@ -134,8 +170,12 @@ void process_ip_hdr(const unsigned char* packet){
 
 void process_arp_hdr(const unsigned char* packet){
     printf("\tARP header\n");
+
     printf("\t\tOpcode: ");
-    packet = packet + (2*SHORT_BYTES) + 2;
+
+    packet = packet + (2*SHORT_BYTES) + 2;  //skip over these bytes i've separated them like this because this is
+                                            //is how the data is grouped in the packet
+
     uint16_t opcode = get_short(&packet, 1);
     switch(opcode){
         case 1:
@@ -148,25 +188,29 @@ void process_arp_hdr(const unsigned char* packet){
             printf("%i\n", opcode);
             break;
     }
+
     printf("\t\tSender MAC: ");
     print_mac(&packet);
+
     printf("\t\tSender IP: ");
     print_ip(&packet);
+
     printf("\t\tTarget MAC: ");
     print_mac(&packet);
+
     printf("\t\tTarget IP: ");
     print_ip(&packet);
+
     printf("\n");
 }
 
 void process_eth_hdr(const unsigned char* packet){
     printf("\tEthernet Header\n");
-    printf("\t\tDest MAC: ");
 
+    printf("\t\tDest MAC: ");
     print_mac(&packet);
 
     printf("\t\tSource MAC: ");
-    
     print_mac(&packet);
 
     printf("\t\tType: ");
