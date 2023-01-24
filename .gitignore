@@ -3,3 +3,5 @@ vscode
 trace
 *_diff.txt
 *.o
+*.pcap.out
+*.pcap
