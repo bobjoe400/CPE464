@@ -62,9 +62,8 @@ void sendToSocket(int socketNum, uint8_t* pdubuf, uint16_t pdulen){
 	printf("Amount of data sent is: %d\n", sent);
 }
 
-void buildMessagePDU(uint8_t* handlesBuf, uint8_t numHandles, uint8_t* cHandle, uint8_t cHandleLen, uint8_t* message, int messageLen, uint8_t* messagePDU, uint16_t messagePDULen){
+void buildMessagePDU(uint8_t* handlesBuf, uint8_t numHandles, uint8_t* cHandle, uint8_t cHandleLen, uint8_t* message, int messageLen, uint8_t* messagePDU, uint16_t messagePDULen, uint8_t flag){
 	uint16_t netPDULen = htons(messagePDULen);
-	uint8_t flag = 6;
 	
 	memcpy(messagePDU, &netPDULen, 2);
 	memcpy(messagePDU+2, &flag, 1);
@@ -104,6 +103,19 @@ void buildAndSendMessage(int socketNum, int numHandles, uint8_t* handlesBuf, int
     int messageLen = strlen((char*) messageBuf);
 	int messageCount = getMessageCount((char*) messageBuf, messageLen);
 
+	uint8_t flag;
+	switch(numHandles){
+		case 0:
+			flag = 4;
+			break;
+		case 1:
+			flag = 5;
+			break;
+		default:
+			flag = 6;
+			break;
+	}
+
 	for(int i = 0; i < messageCount; i++){
 		uint8_t pduMessageLen = (messageLen>199) ? 199 : messageLen;
 		uint8_t pduMessage[pduMessageLen+1];
@@ -119,7 +131,7 @@ void buildAndSendMessage(int socketNum, int numHandles, uint8_t* handlesBuf, int
 		messageBuf+=pduMessageLen;
 		messageLen-=pduMessageLen;
 
-        buildMessagePDU(handlesBuf, numHandles, cHandle, cHandleLen, pduMessage, pduMessageLen, msgPDU, pduLen);
+        buildMessagePDU(handlesBuf, numHandles, cHandle, cHandleLen, pduMessage, pduMessageLen, msgPDU, pduLen, flag);
 
 		sendToSocket(socketNum, msgPDU, pduLen);
 	}

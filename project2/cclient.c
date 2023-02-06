@@ -185,7 +185,7 @@ int sendExit(int socketNum){
 	uint16_t netPDULen = htons((uint16_t) 3);
 	uint8_t flag = 8;
 	memcpy(exitPDU, &netPDULen, 2);
-	memcpy(exitPDU, &flag, 1);
+	memcpy(exitPDU+2, &flag, 1);
 	sendToSocket(socketNum, exitPDU, C_HDR_SIZE);
 	return 1;
 }

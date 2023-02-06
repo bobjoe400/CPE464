@@ -5,7 +5,7 @@ CC= gcc
 CFLAGS= -g -Wall
 LIBS = 
 
-OBJS = networks.o gethostbyname.o pollLib.o safeUtil.o
+OBJS = networks.o gethostbyname.o pollLib.o safeUtil.o serverUtil.o
 
 all:   myClient myServer
 
