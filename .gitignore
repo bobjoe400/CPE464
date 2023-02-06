@@ -1,6 +1,8 @@
 *.code-workspace
 .vscode
 trace
+cclient
+server
 *_diff.txt
 *.o
 *.pcap.out
