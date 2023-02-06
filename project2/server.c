@@ -70,6 +70,8 @@ int checkArgs(int argc, char *argv[])
 	return portNumber;
 }
 
+
+
 void serverLoop(int socketNum){
 	int socket = 0;
 
@@ -79,7 +81,7 @@ void serverLoop(int socketNum){
 			int clientSocket = tcpAccept(socket, DEBUG_FLAG);
 			addToPollSet(clientSocket);
 			//
-			uint8_t buf[3] = {0, 0, 2};
+			uint8_t buf[3];
 			safeSend(clientSocket, buf, 3, 0);
 			//
 		}else{
