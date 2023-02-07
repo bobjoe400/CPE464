@@ -77,7 +77,8 @@ void buildMessagePDU(uint8_t* handlesBuf, uint8_t numHandles, uint8_t* cHandle, 
     }
 
 	int dHandlesPDULen = 0;
-	for(int i = 0; i<numHandles; i++){
+	int i;
+	for(i = 0; i<numHandles; i++){
 		
 		uint8_t* temp = handlesBuf;
 		uint8_t count = 0;
@@ -113,8 +114,8 @@ void buildAndSendMessage(int socketNum, int numHandles, uint8_t* handlesBuf, int
 			flag = 6;
 			break;
 	}
-
-	for(int i = 0; i < messageCount; i++){
+	int i;
+	for(i = 0; i < messageCount; i++){
 		uint8_t pduMessageLen = (messageLen>199) ? 199 : messageLen;
 		uint8_t pduMessage[pduMessageLen+1];
 
