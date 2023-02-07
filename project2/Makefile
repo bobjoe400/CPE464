@@ -2,7 +2,7 @@
 # written by Hugh Smith - April 2019
 
 CC= gcc
-CFLAGS= -g -Wall
+CFLAGS= -g -Wall -pedantic -c99
 LIBS = 
 
 OBJS = networks.o gethostbyname.o pollLib.o safeUtil.o serverUtil.o
