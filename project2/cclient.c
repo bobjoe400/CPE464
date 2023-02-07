@@ -27,10 +27,37 @@
 
 #define DEBUG_FLAG 1
 
+char PRINT_MSG_PROMPT = 1;
+
+void parseHandle(uint8_t* buf, char error){
+	uint8_t handleLen = buf++[0];
+	char handle[handleLen+1];
+	handle[handleLen] = '\0';
+	memcpy(handle, buf, handleLen);
+	if(error){
+		printf("\nClient with handle %s does not exist\n", handle);
+	}else{
+		printf("\t%s\n", handle);
+	}
+}
+
 void parseHandleList(uint8_t* buf){
 	removeFromPollSet(1);
+	PRINT_MSG_PROMPT = 0;
+
 	uint32_t numHandles = get_long(&buf, 1);
-	printf("Number of handles: %i", numHandles);
+	printf("\nNumber of handles: %i\n", numHandles);
+	for(int i = 0; i< numHandles; i++){
+		int socket = pollCall(-1);
+		uint8_t cHDRBuf[C_HDR_SIZE];
+		safeRecv(socket, cHDRBuf, C_HDR_SIZE, MSG_WAITALL);
+		uint16_t handlePDULen;
+		memcpy(&handlePDULen, cHDRBuf, SHORT_BYTES);
+		handlePDULen = ntohs(handlePDULen) - C_HDR_SIZE;
+		uint8_t handleBuf[handlePDULen];
+		safeRecv(socket, handleBuf, handlePDULen, MSG_WAITALL);
+		parseHandle(handleBuf, 0);
+	}
 }
 
 void parseMessage(uint8_t* buf, uint8_t cHandleLen){
@@ -41,18 +68,6 @@ void parseMessage(uint8_t* buf, uint8_t cHandleLen){
 	printf("\n%s: ", sendHandle);
 	buf+=1+handleLen+1+cHandleLen;
 	printf("%s\n", buf);
-}
-
-void parseHandle(uint8_t* buf, char error){
-	uint8_t handleLen = buf++[0];
-	char handle[handleLen+1];
-	handle[handleLen] = '\0';
-	memcpy(handle, buf, handleLen);
-	if(error){
-		printf("\nClient with handle %s does not exist\n", handle);
-	}else{
-		printf("\t\n%s", handle);
-	}
 }
 
 int parseSetup(uint8_t* buf){
@@ -66,7 +81,7 @@ int parseIncoming(int socketNum, uint8_t* outputbuf, uint8_t cHandleLen){
 	int pduLen = get_short(&outputbuf, 1);
 	uint8_t flag = outputbuf++[0];
 	uint8_t rcvbuf[pduLen - C_HDR_SIZE];
-	if(flag != 9){
+	if(flag != 9 && flag != 13){
 		safeRecv(socketNum, rcvbuf, pduLen-C_HDR_SIZE, MSG_WAITALL);
 	}
 	switch(flag){
@@ -81,11 +96,9 @@ int parseIncoming(int socketNum, uint8_t* outputbuf, uint8_t cHandleLen){
 		case 11:
 			parseHandleList(rcvbuf);
 			break;
-		case 12:
-			parseHandle(rcvbuf, 0);
-			break;
 		case 13:
 			addToPollSet(1);
+			PRINT_MSG_PROMPT = 1;
 			break;
 		default:
 			printf("Packet parsing error. Flag recieved: %i\n", flag);
@@ -264,18 +277,17 @@ void clientLoop(int socketNum, char* handle){
 		printf("\nError: Handle already exits: %s\n", handle);
 		return;
 	}
-
 	addToPollSet(1);
 	while(1){
-		printf("$:");
-		fflush(stdout);
+		if(PRINT_MSG_PROMPT){
+			printf("$:");
+			fflush(stdout);
+		}
 		socket = pollCall(-1);
 		if(socket == 1){
 			memset(inputbuf, 0, INPUTMAX);
-			int amtRead = readFromStdin(inputbuf);
-			printf("read: %s string len: %d (including null)\n", inputbuf, amtRead);
-			int retNum = 0;
-			if((retNum = parseInput(socketNum, inputbuf, (uint8_t*) handle, cHandleLen)) < 0){
+			readFromStdin(inputbuf);
+			if(parseInput(socketNum, inputbuf, (uint8_t*) handle, cHandleLen) < 0){
 				printf("Please enter a valid command\n");
 			}
 		}else{

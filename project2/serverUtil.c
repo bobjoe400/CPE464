@@ -30,6 +30,7 @@ void addListElem(int socket, uint8_t* handle, int handleLen){
 
 	if(isListEmpty()){
 		clientList->head = newElem;
+        clientList->size++;
 		return;
 	}
 
@@ -98,6 +99,7 @@ ListElem* listDelete(int socket){
         clientList->head = temp->next; 
         free(temp->handle);
         free(temp); 
+        clientList->size--;
         return retVal;
     }
 	

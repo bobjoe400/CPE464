@@ -50,7 +50,44 @@ int checkArgs(int argc, char *argv[])
 }
 
 void processHandleList(int socket){
+	LinkedList* clientList = getList();
+	uint32_t netNumClients = htonl((uint32_t) clientList->size);
+	uint8_t pdu[C_HDR_SIZE+LONG_BYTES];
+	uint16_t netPDULen = htons(C_HDR_SIZE+LONG_BYTES);
+	uint8_t flag = 11;
+	memcpy(pdu, &netPDULen, SHORT_BYTES);
+	memcpy(pdu+SHORT_BYTES, &flag, 1);
+	memcpy(pdu+C_HDR_SIZE, &netNumClients, LONG_BYTES);
+	sendToSocket(socket, pdu, ntohs(netPDULen));
 
+	ListElem* curr = clientList->head;
+	while(curr != NULL){
+		uint8_t handleLen = strlen(curr->handle);
+		uint16_t handlePDULen = C_HDR_SIZE+1+handleLen;
+		uint8_t handlePDU[handlePDULen];
+		uint8_t flag = 12;
+		handlePDULen = htons(handlePDULen);
+
+		uint8_t handle[handleLen];
+		memcpy(handle, curr->handle, handleLen);
+
+		memcpy(handlePDU, &handlePDULen, SHORT_BYTES);
+		memcpy(handlePDU+SHORT_BYTES, &flag, 1);
+		memcpy(handlePDU+C_HDR_SIZE, &handleLen, 1);
+		memcpy(handlePDU+C_HDR_SIZE+1, &handle, handleLen);
+
+		sendToSocket(socket, handlePDU, ntohs(handlePDULen));
+		curr = curr->next;
+	}
+
+	uint8_t endListPDU[C_HDR_SIZE];
+	uint16_t netEndListPDULen = htons(C_HDR_SIZE);
+	flag = 13;
+
+	memcpy(endListPDU, &netEndListPDULen, SHORT_BYTES);
+	memcpy(endListPDU+SHORT_BYTES, &flag, 1);
+
+	sendToSocket(socket, endListPDU, C_HDR_SIZE);
 }
 
 void sendBroadcast(int socket, uint8_t* message){
@@ -64,7 +101,7 @@ void sendBroadcast(int socket, uint8_t* message){
 	while(curr != NULL){
 		if(curr->socket != socket){
 			uint8_t dHandleLen = strlen(curr->handle);
-			buildAndSendMessage(curr->socket, 1, (uint8_t*) curr->handle, dHandleLen, message, senderHandle, senderHandleLen);
+			buildAndSendMessage(curr->socket, 1, (uint8_t*) curr->handle, dHandleLen+1, message, senderHandle, senderHandleLen);
 		}
 		curr = curr->next;
 	}
@@ -154,7 +191,13 @@ void parseClientResponse(int socket){
 		return;
 	}
 
+	if(flag == 10){
+		processHandleList(socket);
+		return;
+	}
+
 	uint8_t rcvBuf[pduLen-C_HDR_SIZE];
+	memset(rcvBuf, 0, pduLen-C_HDR_SIZE);
 	safeRecv(socket, rcvBuf, pduLen-C_HDR_SIZE, MSG_WAITALL);
 
 	switch(flag){
@@ -166,9 +209,6 @@ void parseClientResponse(int socket){
 			break;
 		case 6:
 			sendMessage(socket, rcvBuf, pduLen);
-			break;
-		case 10:
-			processHandleList(socket);
 			break;
 		default:
 			printf("Packet Recieve Error\n");

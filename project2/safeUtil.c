@@ -58,8 +58,6 @@ void sendToSocket(int socketNum, uint8_t* pdubuf, uint16_t pdulen){
 		perror("send call");
 		exit(-1);
 	}
-
-	printf("Amount of data sent is: %d\n", sent);
 }
 
 void buildMessagePDU(uint8_t* handlesBuf, uint8_t numHandles, uint8_t* cHandle, uint8_t cHandleLen, uint8_t* message, int messageLen, uint8_t* messagePDU, uint16_t messagePDULen, uint8_t flag){
