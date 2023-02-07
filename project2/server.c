@@ -128,7 +128,8 @@ void sendMessage(int socket, uint8_t* buf, uint16_t pduLen){
 	LinkedList* handles = (LinkedList*) sCalloc(1,sizeof(LinkedList));
 	handles->size = 0;
 	int handlesLen = 0;
-	for(int i = 0; i< numHandles; i++){
+	int i;
+	for(i = 0; i< numHandles; i++){
 		uint8_t currHandleLen = buf++[0];
 		uint8_t currHandle[currHandleLen];
 		memcpy(currHandle, buf, currHandleLen);
