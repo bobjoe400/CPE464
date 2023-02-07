@@ -47,7 +47,8 @@ void parseHandleList(uint8_t* buf){
 
 	uint32_t numHandles = get_long(&buf, 1);
 	printf("\nNumber of handles: %i\n", numHandles);
-	for(int i = 0; i< numHandles; i++){
+	int i;
+	for(i = 0; i< numHandles; i++){
 		int socket = pollCall(-1);
 		uint8_t cHDRBuf[C_HDR_SIZE];
 		safeRecv(socket, cHDRBuf, C_HDR_SIZE, MSG_WAITALL);
@@ -158,7 +159,8 @@ int sendMultiCast(int socketNum, uint8_t* buf, uint8_t* cHandle, uint8_t cHandle
 
 	int handlesRead = 0;
 	int dHandlesPDULen = 0;
-	for(int i = 0; i<numHandles; i++){
+	int i;
+	for(i = 0; i<numHandles; i++){
 		
 		uint8_t* temp = buf;
 		int dHandleLen = 0;
