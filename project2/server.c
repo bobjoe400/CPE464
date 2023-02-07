@@ -50,25 +50,33 @@ int checkArgs(int argc, char *argv[])
 }
 
 void processHandleList(int socket){
+
 	LinkedList* clientList = getList();
+
 	uint32_t netNumClients = htonl((uint32_t) clientList->size);
 	uint8_t pdu[C_HDR_SIZE+LONG_BYTES];
 	uint16_t netPDULen = htons(C_HDR_SIZE+LONG_BYTES);
 	uint8_t flag = 11;
+
 	memcpy(pdu, &netPDULen, SHORT_BYTES);
 	memcpy(pdu+SHORT_BYTES, &flag, 1);
 	memcpy(pdu+C_HDR_SIZE, &netNumClients, LONG_BYTES);
+
 	sendToSocket(socket, pdu, ntohs(netPDULen));
 
 	ListElem* curr = clientList->head;
+
 	while(curr != NULL){
+
 		uint8_t handleLen = strlen(curr->handle);
 		uint16_t handlePDULen = C_HDR_SIZE+1+handleLen;
 		uint8_t handlePDU[handlePDULen];
 		uint8_t flag = 12;
+
 		handlePDULen = htons(handlePDULen);
 
 		uint8_t handle[handleLen];
+
 		memcpy(handle, curr->handle, handleLen);
 
 		memcpy(handlePDU, &handlePDULen, SHORT_BYTES);
@@ -77,6 +85,7 @@ void processHandleList(int socket){
 		memcpy(handlePDU+C_HDR_SIZE+1, &handle, handleLen);
 
 		sendToSocket(socket, handlePDU, ntohs(handlePDULen));
+
 		curr = curr->next;
 	}
 
@@ -91,13 +100,19 @@ void processHandleList(int socket){
 }
 
 void sendBroadcast(int socket, uint8_t* message){
+
 	uint8_t senderHandleLen = message++[0];
 	uint8_t senderHandle[senderHandleLen+1];
 	senderHandle[senderHandleLen] = '\0';
+
 	memcpy(senderHandle, message, senderHandleLen);
+
 	message+=senderHandleLen;
+
 	LinkedList* clientList = getList();
+
 	ListElem* curr = clientList->head;
+
 	while(curr != NULL){
 		if(curr->socket != socket){
 			uint8_t dHandleLen = strlen(curr->handle);
@@ -108,32 +123,47 @@ void sendBroadcast(int socket, uint8_t* message){
 }
 
 void sendError(int socket, uint8_t* handle, uint8_t currHandleLen){
+
 	uint16_t pduLen = C_HDR_SIZE+1+currHandleLen;
 	uint8_t pdu[pduLen];
 	uint16_t netPDULen = htons(pduLen);
 	uint8_t flag = 7;
+
 	memcpy(pdu, &netPDULen, 2);
 	memcpy(pdu+2, &flag, 1);
 	memcpy(pdu+C_HDR_SIZE, &currHandleLen, 1);
 	memcpy(pdu+C_HDR_SIZE+1, handle, currHandleLen);
+
 	sendToSocket(socket, pdu, pduLen);
 }
 
 void sendMessage(int socket, uint8_t* buf, uint16_t pduLen){
+
 	uint8_t sendHandleLen = buf++[0];
 	uint8_t sendHandle[sendHandleLen];
+
 	memcpy(sendHandle, buf, sendHandleLen);
+
 	buf+=sendHandleLen;
+
 	uint8_t numHandles = buf++[0];
+
 	LinkedList* handles = (LinkedList*) sCalloc(1,sizeof(LinkedList));
+
 	handles->size = 0;
+
 	int handlesLen = 0;
+
 	int i;
 	for(i = 0; i< numHandles; i++){
+
 		uint8_t currHandleLen = buf++[0];
 		uint8_t currHandle[currHandleLen];
+
 		memcpy(currHandle, buf, currHandleLen);
+
 		ListElem* curr;
+
 		if((curr = findInList_h(currHandle, currHandleLen)) == NULL){
 			sendError(socket, currHandle, currHandleLen);
 			buf+=currHandleLen;
@@ -141,39 +171,53 @@ void sendMessage(int socket, uint8_t* buf, uint16_t pduLen){
 		}else{
 			addListElem_l(handles, curr->socket, curr->handle);
 		}
+
 		buf+=currHandleLen;
 		handlesLen+=currHandleLen+1;
 	}
+
 	ListElem* curr = handles->head;
+
 	while(curr != NULL){
+
 		uint8_t* handle = (uint8_t*) strdup(curr->handle);
 		socket = curr->socket;
+
 		buildAndSendMessage(socket, 1, handle, handlesLen, buf, sendHandle, sendHandleLen);
+
 		curr = curr->next;
 		free(handle);
 	}
+
 	curr = handles->head;
+
 	while(curr != NULL){
 		ListElem* next = curr->next;
 		socket = curr->socket;
 		listDelete_l(handles, socket);
 		curr = next;
 	}
+
 	free(handles);
 }
 
 void processExit(int socket){
+
 	removeFromPollSet(socket);
 	listDelete(socket);
+
 	uint8_t buf[C_HDR_SIZE];
 	uint16_t pduLen = htons(C_HDR_SIZE);
 	uint8_t flag = 9;
+
 	memcpy(buf, &pduLen, 2);
 	memcpy(buf+2, &flag, 1);
+
 	sendToSocket(socket, buf, C_HDR_SIZE);
 }
 
 void parseClientResponse(int socket){
+
 	uint8_t buf[C_HDR_SIZE];
 	uint16_t pduLen;
 
@@ -183,10 +227,13 @@ void parseClientResponse(int socket){
 		close(socket);
 		return;
 	}
+
 	memcpy(&pduLen, buf, 2);
+
 	pduLen = ntohs(pduLen);
 
 	uint8_t flag = buf[2];
+
 	if(flag == 8){
 		processExit(socket);
 		return;
@@ -199,6 +246,7 @@ void parseClientResponse(int socket){
 
 	uint8_t rcvBuf[pduLen-C_HDR_SIZE];
 	memset(rcvBuf, 0, pduLen-C_HDR_SIZE);
+
 	safeRecv(socket, rcvBuf, pduLen-C_HDR_SIZE, MSG_WAITALL);
 
 	switch(flag){
@@ -218,24 +266,37 @@ void parseClientResponse(int socket){
 }
 
 void sendSetupResponse(int socket, uint8_t* buf, char goodOrBad){
+
 	uint16_t pduLen = htons(C_HDR_SIZE);
 	uint8_t flag = 3 - goodOrBad;
+
 	memcpy(buf, &pduLen, 2);
 	memcpy(buf+2, &flag, 1);
+
 	sendToSocket(socket, buf, C_HDR_SIZE);
 }
 
 int addClient(int clientSocket){
+
 	uint8_t buf[C_HDR_SIZE];
+
 	safeRecv(clientSocket, buf, C_HDR_SIZE, MSG_WAITALL);
+
 	if(buf[2] == 1){
+
 		uint8_t handleLen;
+
 		safeRecv(clientSocket, &handleLen, 1, MSG_WAITALL);
+
 		uint8_t handle[handleLen];
+
 		safeRecv(clientSocket, handle, handleLen, MSG_WAITALL);
+
 		if(findInList_h(handle, handleLen) == NULL){
+
 			addListElem(clientSocket, handle, handleLen);
 			addToPollSet(clientSocket);
+
 			sendSetupResponse(clientSocket, buf, 1);
 			return 1;
 		}
@@ -246,6 +307,7 @@ int addClient(int clientSocket){
 }
 
 void serverLoop(int socketNum){
+	
 	int socket = 0;
 
 	initLinkedList();

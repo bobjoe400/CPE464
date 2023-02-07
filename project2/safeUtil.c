@@ -25,33 +25,44 @@
 #include "safeUtil.h"
 
 uint16_t get_short(uint8_t** packet, uint8_t conv){
+
     uint16_t t_short;
     memcpy(&t_short, *packet, SHORT_BYTES);
+
     *packet = *packet+SHORT_BYTES;
+
     if(conv) return ntohs(t_short);
     return t_short;
 }
 
 uint32_t get_long(uint8_t** packet, uint8_t conv){
+
     uint32_t t_long;
     memcpy(&t_long, *packet, LONG_BYTES);
+
     *packet = *packet+LONG_BYTES;
+
     if(conv) return ntohl(t_long);
     return t_long;
 }
 
 int getMessageCount(char* buf, int messageLen){
+
     int messageCount = messageLen/MSGMAXLEN;
+
     if(messageLen%MSGMAXLEN > 0){
         messageCount++;
     }else if(messageLen == 0){
         messageCount++;
     }
+
     return messageCount;
 }
 
 void sendToSocket(int socketNum, uint8_t* pdubuf, uint16_t pdulen){
+
 	int sent = 0;
+
 	sent =  safeSend(socketNum, pdubuf, pdulen, 0);
 	if (sent < 0)
 	{
@@ -61,6 +72,7 @@ void sendToSocket(int socketNum, uint8_t* pdubuf, uint16_t pdulen){
 }
 
 void buildMessagePDU(uint8_t* handlesBuf, uint8_t numHandles, uint8_t* cHandle, uint8_t cHandleLen, uint8_t* message, int messageLen, uint8_t* messagePDU, uint16_t messagePDULen, uint8_t flag){
+	
 	uint16_t netPDULen = htons(messagePDULen);
 	
 	memcpy(messagePDU, &netPDULen, 2);
@@ -99,7 +111,8 @@ void buildMessagePDU(uint8_t* handlesBuf, uint8_t numHandles, uint8_t* cHandle, 
 }
 
 void buildAndSendMessage(int socketNum, int numHandles, uint8_t* handlesBuf, int dHandlesLen, uint8_t* messageBuf, uint8_t* cHandle, uint8_t cHandleLen){
-    int messageLen = strlen((char*) messageBuf);
+    
+	int messageLen = strlen((char*) messageBuf);
 	int messageCount = getMessageCount((char*) messageBuf, messageLen);
 
 	uint8_t flag;
@@ -114,8 +127,10 @@ void buildAndSendMessage(int socketNum, int numHandles, uint8_t* handlesBuf, int
 			flag = 6;
 			break;
 	}
+
 	int i;
 	for(i = 0; i < messageCount; i++){
+		
 		uint8_t pduMessageLen = (messageLen>199) ? 199 : messageLen;
 		uint8_t pduMessage[pduMessageLen+1];
 

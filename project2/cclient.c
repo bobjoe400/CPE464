@@ -30,10 +30,13 @@
 char PRINT_MSG_PROMPT = 1;
 
 void parseHandle(uint8_t* buf, char error){
+
 	uint8_t handleLen = buf++[0];
 	char handle[handleLen+1];
 	handle[handleLen] = '\0';
+
 	memcpy(handle, buf, handleLen);
+
 	if(error){
 		printf("\nClient with handle %s does not exist\n", handle);
 	}else{
@@ -42,30 +45,38 @@ void parseHandle(uint8_t* buf, char error){
 }
 
 void parseHandleList(uint8_t* buf){
+
 	removeFromPollSet(1);
 	PRINT_MSG_PROMPT = 0;
 
 	uint32_t numHandles = get_long(&buf, 1);
 	printf("\nNumber of handles: %i\n", numHandles);
+
 	int i;
 	for(i = 0; i< numHandles; i++){
+
 		int socket = pollCall(-1);
 		uint8_t cHDRBuf[C_HDR_SIZE];
 		safeRecv(socket, cHDRBuf, C_HDR_SIZE, MSG_WAITALL);
+
 		uint16_t handlePDULen;
 		memcpy(&handlePDULen, cHDRBuf, SHORT_BYTES);
 		handlePDULen = ntohs(handlePDULen) - C_HDR_SIZE;
 		uint8_t handleBuf[handlePDULen];
 		safeRecv(socket, handleBuf, handlePDULen, MSG_WAITALL);
+
 		parseHandle(handleBuf, 0);
 	}
 }
 
 void parseMessage(uint8_t* buf, uint8_t cHandleLen){
+
 	uint8_t handleLen = buf++[0];
 	char sendHandle[handleLen+1];
 	sendHandle[handleLen] = '\0';
+
 	memcpy(sendHandle, buf, handleLen);
+
 	printf("\n%s: ", sendHandle);
 	buf+=1+handleLen+1+cHandleLen;
 	printf("%s\n", buf);
@@ -79,12 +90,15 @@ int parseSetup(uint8_t* buf){
 }
 
 int parseIncoming(int socketNum, uint8_t* outputbuf, uint8_t cHandleLen){
+
 	int pduLen = get_short(&outputbuf, 1);
 	uint8_t flag = outputbuf++[0];
 	uint8_t rcvbuf[pduLen - C_HDR_SIZE];
+
 	if(flag != 9 && flag != 13){
 		safeRecv(socketNum, rcvbuf, pduLen-C_HDR_SIZE, MSG_WAITALL);
 	}
+
 	switch(flag){
 		case 5:
 			parseMessage(rcvbuf, cHandleLen);
@@ -132,8 +146,10 @@ int readFromStdin(uint8_t * buffer)
 }
 
 void sendMessage(int socketNum, uint8_t* buf, uint8_t* cHandle, uint8_t cHandleLen){
+
 	uint8_t* handlesBuf = buf;
 	uint8_t dHandleLen = 0;
+
 	while((char)buf[0] != '\0' && buf[0] != ' ' && dHandleLen <= HANDLEMAX){
 		dHandleLen++;
 		buf++;
@@ -144,13 +160,16 @@ void sendMessage(int socketNum, uint8_t* buf, uint8_t* cHandle, uint8_t cHandleL
 }
 
 int sendMultiCast(int socketNum, uint8_t* buf, uint8_t* cHandle, uint8_t cHandleLen){
+
 	uint8_t numHandles = 0;
 	memcpy(&numHandles, buf++, 1);
 	numHandles -= ASCII_NUM_OFFSET;
+
 	if(numHandles<2 || numHandles>9){
 		printf("Please enter a number of handles from 2 to 9\n");
 		return -1;
 	}
+
 	if(buf++[0] != ' '){
 		return -1;
 	}
@@ -187,36 +206,46 @@ int sendMultiCast(int socketNum, uint8_t* buf, uint8_t* cHandle, uint8_t cHandle
 }
 
 void sendList(int socketNum){
+
 	uint16_t netPDULen = htons(C_HDR_SIZE);
 	uint8_t listPDU[C_HDR_SIZE];
 	uint8_t flag = 10;
+
 	memcpy(listPDU, &netPDULen, 2);
 	memcpy(listPDU+2, &flag, 1);
+
 	sendToSocket(socketNum, listPDU, (uint16_t) C_HDR_SIZE);
 }
 
 int sendExit(int socketNum){
+
 	uint8_t exitPDU[C_HDR_SIZE];
 	uint16_t netPDULen = htons((uint16_t) 3);
 	uint8_t flag = 8;
+
 	memcpy(exitPDU, &netPDULen, 2);
 	memcpy(exitPDU+2, &flag, 1);
+
 	sendToSocket(socketNum, exitPDU, C_HDR_SIZE);
 	return 1;
 }
 
 void sendSetup(int socketNum, char* handle, uint8_t cHandleLen){
+
 	uint8_t pdubuf[4+cHandleLen];
 	uint16_t pdulen = htons(4+(uint16_t)cHandleLen);
 	uint8_t flag = 1;
+
 	memcpy(pdubuf, &pdulen, 2);
 	memcpy(pdubuf+2, &flag, 1);
 	memcpy(pdubuf+C_HDR_SIZE, &cHandleLen, 1);
 	memcpy(pdubuf+C_HDR_SIZE+1, handle, cHandleLen);
+
 	sendToSocket(socketNum, pdubuf, ntohs(pdulen));
 }
 
 int parseInput(int socketNum, uint8_t* inputbuf, uint8_t* cHandle, int cHandleLen){
+
 	if(strlen((char*) inputbuf) < 2){
 		return -1;
 	}
@@ -266,6 +295,7 @@ int parseInput(int socketNum, uint8_t* inputbuf, uint8_t* cHandle, int cHandleLe
 }
 
 void clientLoop(int socketNum, char* handle){
+	
 	uint8_t cHandleLen = (uint8_t) strlen(handle);
 	uint8_t inputbuf[INPUTMAX];   //data buffer
 	uint8_t rcvbuf[RCVMAX];
@@ -275,25 +305,36 @@ void clientLoop(int socketNum, char* handle){
 	sendSetup(socketNum, handle, cHandleLen);
 	socket = pollCall(-1);
 	safeRecv(socketNum, rcvbuf, RCVMAX, MSG_DONTWAIT);
+
 	if(parseSetup(rcvbuf) < 0){
 		printf("\nError: Handle already exits: %s\n", handle);
 		return;
 	}
+
 	addToPollSet(1);
+
 	while(1){
+
 		if(PRINT_MSG_PROMPT){
 			printf("$:");
 			fflush(stdout);
 		}
+
 		socket = pollCall(-1);
+
 		if(socket == 1){
+
 			memset(inputbuf, 0, INPUTMAX);
 			readFromStdin(inputbuf);
+
 			if(parseInput(socketNum, inputbuf, (uint8_t*) handle, cHandleLen) < 0){
 				printf("Please enter a valid command\n");
 			}
+
 		}else{
+
 			memset(rcvbuf, 0, RCVMAX);
+
 			if(safeRecv(socket, rcvbuf, C_HDR_SIZE, MSG_WAITALL)<=0){
 				printf("\nServer Terminated\n");
 				break;

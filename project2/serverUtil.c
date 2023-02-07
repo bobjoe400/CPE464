@@ -73,23 +73,30 @@ void addListElem_l(LinkedList* list, int socket, char* handle){
 }
 
 ListElem* findInList_s(int socket){
+
     ListElem* current = clientList->head;
+
     while(current != NULL && current->socket != socket){
         current = current->next;
     }
+
     return current;
 }
 
 ListElem* findInList_h(uint8_t* handle, int handleLen){
+
     char* toFind = netHandleToString(handle, handleLen);
     ListElem* current = clientList->head;
+
     while(current != NULL && (strcmp(current->handle, toFind) != 0)){
         current = current->next;
     }
+
     return current;
 }
 
 ListElem* listDelete(int socket){
+
 	struct ListElem* temp = clientList->head, *prev;
 	struct ListElem* retVal = (ListElem*) sCalloc(1, sizeof(ListElem));
     
@@ -124,15 +131,20 @@ ListElem* listDelete(int socket){
 }
 
 ListElem* listDelete_l(LinkedList* list, int socket){
+
 	struct ListElem* temp = list->head, *prev;
 	struct ListElem* retVal = (ListElem*) sCalloc(1, sizeof(ListElem));
     
 	//if first elements contains the data
     if (temp != NULL && temp->socket == socket) {
+
 		memcpy(retVal, temp, sizeof(ListElem));
+
         list->head = temp->next; 
+
         free(temp->handle);
         free(temp); 
+
         return retVal;
     }
 	
@@ -165,8 +177,12 @@ int isListEmpty_l(LinkedList* list){
 }
 
 char* netHandleToString(uint8_t* handle, int handleLen){
+
     char* newHandle = sCalloc(1, handleLen+1);
+
     newHandle[handleLen] = 0;
+
     memcpy(newHandle, handle, handleLen);
+	
     return newHandle;
 }
