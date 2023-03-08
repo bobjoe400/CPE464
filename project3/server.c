@@ -13,6 +13,7 @@
 #include "gethostbyname.h"
 #include "networks.h"
 #include "safeUtil.h"
+#include "slideWindow.h"
 
 #define MAXBUF 80
 
@@ -63,17 +64,17 @@ int checkArgs(int argc, char *argv[])
 	// Checks args and returns port number
 	int portNumber = 0;
 
-	if (argc > 2)
+	if (argc > 3 || argc < 2)
 	{
-		fprintf(stderr, "Usage %s [optional port number]\n", argv[0]);
+		fprintf(stderr, "Usage %s error-percent [optional port number]\n", argv[0]);
 		exit(-1);
 	}
 	
-	if (argc == 2)
+	if (argc == 3)
 	{
-		portNumber = atoi(argv[1]);
+		portNumber = atoi(argv[2]);
 	}
-	
+
 	return portNumber;
 }
 

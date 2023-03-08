@@ -3,6 +3,8 @@
 trace
 cclient
 server
+rcopy
+server
 *_diff.txt
 *.o
 *.pcap.out
