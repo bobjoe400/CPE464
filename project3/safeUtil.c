@@ -9,59 +9,39 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
+#include <string.h>
 
 #include "safeUtil.h"
+#include "checksum.h"
+#include "networks.h"
 
 #ifdef __LIBCPE464_
 #include "cpe464.h"
 #endif
 
-int safeRecvfrom(int socketNum, void * buf, int len, int flags, struct sockaddr *srcAddr, int * addrLen)
-{
-	int returnValue = 0;
-	if ((returnValue = recvfrom(socketNum, buf, (size_t) len, flags, srcAddr, (socklen_t *) addrLen)) < 0)
-	{
-		perror("recvfrom: ");
-		exit(-1);
-	}
-	
-	return returnValue;
+void createHeader(uint8_t flag, int seqNum, uint8_t* hdrbuf){
+	uint32_t netSeqNum = htonl(seqNum);
+	memcpy(hdrbuf, &netSeqNum, LONG_BYTES);
+	memset(hdrbuf+LONG_BYTES, SHORT_BYTES, 0);
+	memcpy(hdrbuf+LONG_BYTES+SHORT_BYTES, &flag, sizeof(uint8_t));
 }
 
-int safeSendto(int socketNum, void * buf, int len, int flags, struct sockaddr *srcAddr, int addrLen)
-{
-	int returnValue = 0;
-	if ((returnValue = sendto(socketNum, buf, (size_t) len, flags, srcAddr, (socklen_t) addrLen)) < 0)
-	{
-		perror("sendto: ");
-		exit(-1);
+int buildPacket(uint8_t flag, int seqNum, int dataLen, uint8_t* data, uint8_t* PDUBuf){
+	uint8_t hdrbuf[HDR_SIZE];
+	createHeader(flag, seqNum, hdrbuf);
+	memcpy(PDUBuf, hdrbuf, HDR_SIZE);
+	if(dataLen>0){
+		memcpy(PDUBuf+HDR_SIZE, data, dataLen);
 	}
-	
-	return returnValue;
+	uint16_t chksum = in_cksum(PDUBuf, HDR_SIZE+dataLen);
+	memcpy(PDUBuf+LONG_BYTES, chksum, SHORT_BYTES);
+	return HDR_SIZE+dataLen;
 }
 
-int safeRecv(int socketNum, void * buf, int len, int flags)
-{
-	int returnValue = 0;
-	if ((returnValue = recv(socketNum, buf, (size_t) len, flags)) < 0)
-	{
-		perror("recv: ");
-		exit(-1);
-	}
-	
-	return returnValue;
-}
-
-int safeSend(int socketNum, void * buf, int len, int flags)
-{
-	int returnValue = 0;
-	if ((returnValue = send(socketNum, buf, (size_t) len, flags)) < 0)
-	{
-		perror("send: ");
-		exit(-1);
-	}
-	
-	return returnValue;
+int32_t send_buf(uint8_t flag, int seqNum, int dataLen, uint8_t* data, uint8_t* PDUBuf,  Connection* connection){
+	int sendingLen = buildPacket(flag, seqNum, dataLen, data, PDUBuf);
+	return safeSendto(PDUBuf, sendingLen, connection);
 }
 
 void * srealloc(void *ptr, size_t size)

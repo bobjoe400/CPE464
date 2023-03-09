@@ -22,18 +22,50 @@
 // This funciton creates a UDP socket on the server side and binds to that socket.  
 // It prints out the port number and returns the socket number.
 
-int udpServerSetup(int serverPort)
-{
-	struct sockaddr_in6 serverAddress;
+int safeGetUDPSocket(){
 	int socketNum = 0;
-	int serverAddrLen = 0;	
-	
+
 	// create the socket
 	if ((socketNum = socket(AF_INET6,SOCK_DGRAM,0)) < 0)
 	{
 		perror("socket() call error");
 		exit(-1);
 	}
+
+	return socketNum;
+}
+
+int safeRecvfrom(int rcv_sk_num, void * buf, int len, Connection* from)
+{
+	int returnValue = 0;
+	from->len = sizeof(struct sockaddr_in6);
+	if ((returnValue = recvfrom(rcv_sk_num, buf, len, 0, (struct sockaddr *) &(from->remote), &from->len)) < 0)
+	{
+		perror("recvfrom: ");
+		exit(-1);
+	}
+	
+	return returnValue;
+}
+
+int safeSendto(void * buf, int len, Connection* to)
+{
+	int returnValue = 0;
+	if ((returnValue = sendto(to->sk_num, buf, (size_t) len, 0, (struct sockaddr*) &(to->remote), to->len)) < 0)
+	{
+		perror("sendto: ");
+		exit(-1);
+	}
+	
+	return returnValue;
+}
+
+int udpServerSetup(int serverPort)
+{
+	struct sockaddr_in6 serverAddress;
+	int serverAddrLen = 0;	
+	
+	int socketNum = safeGetUDPSocket();
 	
 	// set up the socket
 	memset(&serverAddress, 0, sizeof(struct sockaddr_in6));
@@ -61,33 +93,29 @@ int udpServerSetup(int serverPort)
 // It assumes the address structure is created before calling this.
 // Returns the socket number and the filled in serverAddress struct.
 
-int setupUdpClientToServer(struct sockaddr_in6 *serverAddress, char * hostName, int serverPort)
+int updCilentSetup(char * hostName, int serverPort, Connection* connection)
 {
-	int socketNum = 0;
 	char ipString[INET6_ADDRSTRLEN];
-	uint8_t * ipAddress = NULL;
+
+	memset(&connection->remote, 0, sizeof(struct sockaddr_in6));
+	connection->sk_num = 0;
+	connection->len = sizeof(struct sockaddr_in6);
+	connection->remote.sin6_port = htons(serverPort);
+	connection->remote.sin6_family = AF_INET6;	
+
+	connection->sk_num = safeGetUDPSocket();
 	
-	// create the socket
-	if ((socketNum = socket(AF_INET6, SOCK_DGRAM, 0)) < 0)
+	if (gethostbyname6(hostName, &connection->remote) == NULL)
 	{
-		perror("socket() call error");
-		exit(-1);
-	}
-  	 	
-	memset(serverAddress, 0, sizeof(struct sockaddr_in6));
-	serverAddress->sin6_port = ntohs(serverPort);
-	serverAddress->sin6_family = AF_INET6;	
-	
-	if ((ipAddress = gethostbyname6(hostName, serverAddress)) == NULL)
-	{
-		exit(-1);
+		printf("Host not found: %s\n", hostName);
+		return -1;
 	}
 		
-	
-	inet_ntop(AF_INET6, ipAddress, ipString, sizeof(ipString));
-	printf("Server info - IP: %s Port: %d \n", ipString, serverPort);
+
+	inet_ntop(AF_INET6, &connection->remote.sin6_addr, ipString, sizeof(ipString));
+	printf("Server info - IP: %s Port: %d \n", ipString, ntohs(connection->remote.sin6_port));
 		
-	return socketNum;
+	return 0;
 }
 
 

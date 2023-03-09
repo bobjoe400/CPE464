@@ -6,6 +6,7 @@
 
 typedef struct{
     int seqNum;
+    int dataLen;
     char* data;
 }windowBuffEntry;
 
@@ -20,8 +21,10 @@ void init_serverBuff(int windowsize, int buffsize);
 
 windowBuffEntry getClientPacket(int seqNum);
 void addClientPacket(int seqNum, char* data, int nbytes);
+void removeClientPacket(int seqNum);
 
-windowBuffEntry* getServerPacket();
+windowBuffEntry getServerPacket();
 void addServerPacket(int seqNum, char* data, int nbytes);
+void removeServerPacket(int seqNum);
 
 #endif
